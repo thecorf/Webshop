@@ -1,17 +1,15 @@
-using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
 using Webshop.Model;
 
 namespace Webshop.Model.Repos;
 
 public interface IProductRepository
 {
-    Task<IEnumerable<Product>> GetAllAsync(CancellationToken cancellationToken);
-
-    Task<Product?> GetByIdAsync(int id, CancellationToken cancellationToken);
-
-    Task<IEnumerable<Product>> GetByCategoryAsync(string category, CancellationToken cancellationToken);
-
-    Task<IEnumerable<Product>> SearchAsync(string searchTerm, decimal? maxPrice, CancellationToken cancellationToken);
+    Task<List<Product>> GetAllAsync(CancellationToken ct = default);
+    Task<Product?> GetByIdAsync(int id, CancellationToken ct = default);
+    Task<List<Product>> GetByCategoryAsync(int categoryId, CancellationToken ct = default);
+    Task<List<Product>> SearchAsync(string searchTerm, CancellationToken ct = default);
+    Task<Product> CreateAsync(Product product, CancellationToken ct = default);
+    Task UpdateAsync(Product product, CancellationToken ct = default);
+    Task DeleteAsync(int id, CancellationToken ct = default);
+    Task<Dictionary<int, string>> GetCategoryMapAsync(CancellationToken ct = default);
 }

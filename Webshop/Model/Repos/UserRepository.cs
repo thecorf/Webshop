@@ -71,15 +71,15 @@ public sealed class UserRepository : SqlRepositoryBase, IUserRepository
 
         var hashed = Argon2.Hash(password);
 
-        return await InTransactionAsync(async (conn, tx, cancellationToken) =>
+        return await InTransactionAsync<User>(async (conn, tx) =>
         {
             using var cmd = conn.CreateCommand();
             cmd.Transaction = tx;
-            cmd.CommandText = $@"
-INSERT INTO {TableName} ({UserNameColumn}, {FullNameColumn}, {EmailColumn}, {PasswordHashColumn}, {RoleColumn})
+            cmd.CommandText = $@"INSERT INTO {TableName} ({UserNameColumn}, {FullNameColumn}, {EmailColumn}, {PasswordHashColumn}, {RoleColumn})
 VALUES (@username, @fullname, @email, @passwordHash, @role);
-SELECT CAST(SCOPE_IDENTITY() AS int);
-";
+SELECT CAST(SCOPE_IDENTITY() AS int);";
+
+            cmd.Parameters.Add(new SqlParameter("@username", SqlDbType.NVarChar, 200) { Value = user.UserName });
 
             cmd.Parameters.Add(new SqlParameter("@username", SqlDbType.NVarChar, 200) { Value = user.UserName });
             cmd.Parameters.Add(new SqlParameter("@fullname", SqlDbType.NVarChar, 200) { Value = user.FullName });
@@ -87,19 +87,11 @@ SELECT CAST(SCOPE_IDENTITY() AS int);
             cmd.Parameters.Add(new SqlParameter("@passwordHash", SqlDbType.NVarChar, -1) { Value = hashed });
             cmd.Parameters.Add(new SqlParameter("@role", SqlDbType.Int) { Value = (int)user.Role });
 
-            var idObj = await cmd.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false);
+            var idObj = await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false);
             var id = Convert.ToInt32(idObj);
 
-            return new User
-            {
-                Id = id,
-                UserName = user.UserName,
-                FullName = user.FullName,
-                Email = user.Email,
-                PasswordHash = hashed,
-                Role = user.Role
-            };
-        }, ct).ConfigureAwait(false);
+            return new User { Id = id, UserName = user.UserName, FullName = user.FullName, Email = user.Email, PasswordHash = hashed, Role = user.Role };
+        });
     }
 
     public async Task<bool> UpdatePasswordAsync(int userId, string newPassword, CancellationToken ct = default)

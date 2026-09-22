@@ -1,0 +1,49 @@
+﻿@page
+@model Webshop.Pages.RegisterModel
+@{
+    ViewData["Title"] = "Opret konto";
+}
+
+<h1>Opret konto</h1>
+
+<form method="post">
+    <div asp-validation-summary="All" class="text-danger"></div>
+
+    <div class="mb-3">
+        <label asp-for="Input.UserName" class="form-label">Brugernavn</label>
+        <input asp-for="Input.UserName" class="form-control" autocomplete="username" />
+        <span asp-validation-for="Input.UserName" class="text-danger"></span>
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="Input.FullName" class="form-label">Fulde navn</label>
+        <input asp-for="Input.FullName" class="form-control" autocomplete="name" />
+        <span asp-validation-for="Input.FullName" class="text-danger"></span>
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="Input.Email" class="form-label">E-mail</label>
+        <input asp-for="Input.Email" class="form-control" type="email" autocomplete="email" />
+        <span asp-validation-for="Input.Email" class="text-danger"></span>
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="Input.Password" class="form-label">Adgangskode</label>
+        <input asp-for="Input.Password" class="form-control" type="password"
+               autocomplete="new-password" minlength="8" />
+        <div class="form-text">
+            Minimum 8 tegn, ét tal og ét specialtegn.
+            <br />Adgangskoden må ikke indeholde dit brugernavn eller email.
+        </div>
+        <!-- Strength meter kan tilføjes her -->
+        <span asp-validation-for="Input.Password" class="text-danger"></span>
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="Input.ConfirmPassword" class="form-label">Gentag adgangskode</label>
+        <input asp-for="Input.ConfirmPassword" class="form-control" type="password"
+               autocomplete="new-password" />
+        <span asp-validation-for="Input.ConfirmPassword" class="text-danger"></span>
+    </div>
+    <button type="submit" class="btn btn-primary">Opret konto</button>
+</form>

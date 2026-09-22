@@ -1,0 +1,63 @@
+﻿@page
+@model Webshop.Pages.AdminProductEditModel
+@{
+    ViewData["Title"] = Model.IsNewProduct ? "Opret produkt" : "Rediger produkt";
+}
+
+<h1>@ViewData["Title"]</h1>
+
+@if (TempData["ErrorMessage"] is string err)
+{
+    <div class="alert alert-danger">@err</div>
+}
+
+<form method="post">
+    <div asp-validation-summary="All" class="text-danger"></div>
+
+    <input type="hidden" asp-for="Input.Id" />
+
+    <div class="mb-3">
+        <label asp-for="Input.Name" class="form-label">Navn</label>
+        <input asp-for="Input.Name" class="form-control" />
+        <span asp-validation-for="Input.Name" class="text-danger"></span>
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="Input.Description" class="form-label">Beskrivelse</label>
+        <textarea asp-for="Input.Description" class="form-control" rows="4"></textarea>
+        <span asp-validation-for="Input.Description" class="text-danger"></span>
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="Input.Price" class="form-label">Pris (kr.)</label>
+        <input asp-for="Input.Price" class="form-control" type="number" step="0.01" min="0" />
+        <span asp-validation-for="Input.Price" class="text-danger"></span>
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="Input.Stock" class="form-label">Lagerbeholdning</label>
+        <input asp-for="Input.Stock" class="form-control" type="number" min="0" />
+        <span asp-validation-for="Input.Stock" class="text-danger"></span>
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="Input.CategoryId" class="form-label">Kategori</label>
+        <select asp-for="Input.CategoryId" class="form-select" asp-items="Model.CategoryOptions">
+            <option value="">-- Vælg kategori --</option>
+        </select>
+        <span asp-validation-for="Input.CategoryId" class="text-danger"></span>
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="Input.ImageUrl" class="form-label">Billede-URL</label>
+        <input asp-for="Input.ImageUrl" class="form-control"
+               placeholder="/images/ethiopien-yirgacheffe.jpg eller https://..." />
+        <div class="form-text">
+            Sti til et billede i wwwroot/images/ eller en ekstern URL. Kan også lægges blankt.
+        </div>
+        <span asp-validation-for="Input.ImageUrl" class="text-danger"></span>
+    </div>
+
+    <button type="submit" class="btn btn-primary">Gem</button>
+    <a asp-page="/AdminProducts" class="btn btn-outline-secondary">Annullér</a>
+</form>

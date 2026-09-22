@@ -1,40 +1,46 @@
-using System;
-using System.Collections.Generic;
-using System.IO;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 
 namespace Webshop.Model.Services;
 
 public sealed class PasswordBlocklist
 {
-    private const string DefaultFileName = "breached_passwords.txt";
     private readonly HashSet<string> _breachedPasswords;
+    private readonly ILogger<PasswordBlocklist> _logger;
 
-    public PasswordBlocklist(string filePath)
+    public PasswordBlocklist(ILogger<PasswordBlocklist> logger, IHostEnvironment env)
     {
-        if (string.IsNullOrWhiteSpace(filePath)) throw new ArgumentException("File path must be provided.", nameof(filePath));
-        _breachedPasswords = new HashSet<string>(StringComparer.Ordinal);
-        Load(filePath);
-    }
+        _logger = logger;
+        _breachedPasswords = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-    public PasswordBlocklist()
-        : this(Path.Combine(AppContext.BaseDirectory, DefaultFileName))
-    {
-    }
+        var filePath = Path.Combine(env.ContentRootPath, "Model", "Services", "password_blocklist.txt");
 
-    public bool IsBreached(string password)
-    {
-        if (password is null) throw new ArgumentNullException(nameof(password));
-        return _breachedPasswords.Contains(password);
-    }
-
-    private void Load(string filePath)
-    {
-        if (!File.Exists(filePath)) return;
-        foreach (var line in File.ReadLines(filePath))
+        if (!File.Exists(filePath))
         {
-            var trimmed = line.Trim();
-            if (string.IsNullOrEmpty(trimmed)) continue;
-            _breachedPasswords.Add(trimmed);
+            _logger.LogWarning("Password blocklist-fil ikke fundet: {FilePath}", filePath);
+            return;
+        }
+
+        try
+        {
+            foreach (var line in File.ReadAllLines(filePath))
+            {
+                var trimmed = line.Trim();
+                if (trimmed.Length > 0)
+                    _breachedPasswords.Add(trimmed);
+            }
+
+            _logger.LogInformation("Password blocklist indlæst: {Count} poster", _breachedPasswords.Count);
+        }
+        catch (IOException ex)
+        {
+            _logger.LogError(ex, "Kunne ikke læse password blocklist-fil");
         }
     }
+
+    /// <summary>
+    /// Returnerer true hvis adgangskoden findes i blokeringslisten.
+    /// </summary>
+    public bool IsBreached(string password)
+        => _breachedPasswords.Contains(password);
 }

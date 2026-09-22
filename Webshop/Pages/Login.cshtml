@@ -1,0 +1,25 @@
+﻿@page
+@model Webshop.Pages.LoginModel
+@{
+    ViewData["Title"] = "Log ind";
+}
+
+<h1>Log ind</h1>
+
+<form method="post">
+    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+    <div class="mb-3">
+        <label asp-for="Input.UserName" class="form-label">Brugernavn</label>
+        <input asp-for="Input.UserName" class="form-control" autocomplete="username" />
+        <span asp-validation-for="Input.UserName" class="text-danger"></span>
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="Input.Password" class="form-label">Adgangskode</label>
+        <input asp-for="Input.Password" class="form-control" type="password" autocomplete="current-password" />
+        <span asp-validation-for="Input.Password" class="text-danger"></span>
+    </div>
+
+    <button type="submit" class="btn btn-primary">Log ind</button>
+</form>

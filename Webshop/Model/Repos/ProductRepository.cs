@@ -1,150 +1,131 @@
-using System;
-using System.Collections.Generic;
-using System.Data;
-using System.Threading;
-using System.Threading.Tasks;
 using Microsoft.Data.SqlClient;
 using Webshop.Model;
 
 namespace Webshop.Model.Repos;
 
-public sealed class ProductRepository : SqlRepositoryBase, IProductRepository
+public class ProductRepository : SqlRepositoryBase, IProductRepository
 {
-    private const string TableName = "Products";
-    private const string IdColumn = "Id";
-    private const string NameColumn = "Name";
-    private const string CategoryColumn = "Category";
-    private const string DescriptionColumn = "Description";
-    private const string PriceColumn = "Price";
-    private const byte PricePrecision = 18;
-    private const byte PriceScale = 2;
-    private const int SearchPatternLength = 4000;
-    private const int CategoryLength = 100;
+    public ProductRepository(IDbConnectionFactory factory) : base(factory) { }
 
-    public ProductRepository(IDbConnectionFactory connectionFactory)
-        : base(connectionFactory)
+    public async Task<List<Product>> GetAllAsync(CancellationToken ct = default)
+        => await QueryAsync(
+            "SELECT Id, Name, Description, Price, Stock, CategoryId, ImageUrl FROM Products ORDER BY Name",
+            Map,
+            null,
+            ct);
+
+    public async Task<Product?> GetByIdAsync(int id, CancellationToken ct = default)
     {
+        var products = await QueryAsync(
+            "SELECT Id, Name, Description, Price, Stock, CategoryId, ImageUrl FROM Products WHERE Id = @id",
+            Map,
+            p => p.AddWithValue("@id", id),
+            ct);
+
+        return products.FirstOrDefault();
     }
 
-    public async Task<IEnumerable<Product>> GetAllAsync(CancellationToken cancellationToken)
-    {
-        var sql = $"""
-                 SELECT {IdColumn}, {NameColumn}, {CategoryColumn}, {DescriptionColumn}, {PriceColumn}
-                 FROM {TableName}
-                 ORDER BY {NameColumn};
-                 """;
+    public async Task<List<Product>> GetByCategoryAsync(int categoryId, CancellationToken ct = default)
+        => await QueryAsync(
+            "SELECT Id, Name, Description, Price, Stock, CategoryId, ImageUrl FROM Products WHERE CategoryId = @categoryId ORDER BY Name",
+            Map,
+            p => p.AddWithValue("@categoryId", categoryId),
+            ct);
 
-        return await QueryAsync(sql, null, MapProduct, cancellationToken).ConfigureAwait(false);
+    public async Task<List<Product>> SearchAsync(string searchTerm, CancellationToken ct = default)
+    {
+        var escaped = searchTerm
+            .Replace("\\", "\\\\")
+            .Replace("%", "\\%")
+            .Replace("_", "\\_");
+
+        return await QueryAsync(
+            @"SELECT Id, Name, Description, Price, Stock, CategoryId, ImageUrl 
+              FROM Products 
+              WHERE Name LIKE @term ESCAPE '\\' 
+                 OR Description LIKE @term ESCAPE '\\'
+              ORDER BY Name",
+            Map,
+            p => p.AddWithValue("@term", $"%{escaped}%"),
+            ct);
     }
 
-    public async Task<Product?> GetByIdAsync(int id, CancellationToken cancellationToken)
+    public async Task<Product> CreateAsync(Product product, CancellationToken ct = default)
     {
-        var sql = $"""
-                 SELECT {IdColumn}, {NameColumn}, {CategoryColumn}, {DescriptionColumn}, {PriceColumn}
-                 FROM {TableName}
-                 WHERE {IdColumn} = @id;
-                 """;
+        const string sql = @"INSERT INTO Products (Name, Description, Price, Stock, CategoryId, ImageUrl)
+                             VALUES (@name, @desc, @price, @stock, @categoryId, @imageUrl);
+                             SELECT CAST(SCOPE_IDENTITY() AS INT);";
 
-        var parameters = new[]
-        {
-            new SqlParameter("@id", SqlDbType.Int)
+        var newId = await ScalarAsync<int>(
+            sql,
+            p =>
             {
-                Value = id
-            }
-        };
+                p.AddWithValue("@name", product.Name);
+                p.AddWithValue("@desc", (object?)product.Description ?? DBNull.Value);
+                p.AddWithValue("@price", product.Price);
+                p.AddWithValue("@stock", product.Stock);
+                p.AddWithValue("@categoryId", product.CategoryId);
+                p.AddWithValue("@imageUrl", (object?)product.ImageUrl ?? DBNull.Value);
+            },
+            ct);
 
-        var rows = await QueryAsync(sql, parameters, MapProduct, cancellationToken).ConfigureAwait(false);
-        foreach (var product in rows)
-        {
-            return product;
-        }
-
-        return null;
+        product.Id = newId;
+        return product;
     }
 
-    public async Task<IEnumerable<Product>> GetByCategoryAsync(string category, CancellationToken cancellationToken)
+    public async Task UpdateAsync(Product product, CancellationToken ct = default)
     {
-        var sql = $"""
-                 SELECT {IdColumn}, {NameColumn}, {CategoryColumn}, {DescriptionColumn}, {PriceColumn}
-                 FROM {TableName}
-                 WHERE {CategoryColumn} = @category
-                 ORDER BY {NameColumn};
-                 """;
+        const string sql = @"UPDATE Products SET
+                                Name = @name,
+                                Description = @desc,
+                                Price = @price,
+                                Stock = @stock,
+                                CategoryId = @categoryId,
+                                ImageUrl = @imageUrl
+                             WHERE Id = @id";
 
-        var parameters = new[]
-        {
-            new SqlParameter("@category", SqlDbType.NVarChar, CategoryLength)
+        await ExecuteAsync(sql,
+            p =>
             {
-                Value = category ?? string.Empty
-            }
-        };
-
-        return await QueryAsync(sql, parameters, MapProduct, cancellationToken).ConfigureAwait(false);
+                p.AddWithValue("@id", product.Id);
+                p.AddWithValue("@name", product.Name);
+                p.AddWithValue("@desc", (object?)product.Description ?? DBNull.Value);
+                p.AddWithValue("@price", product.Price);
+                p.AddWithValue("@stock", product.Stock);
+                p.AddWithValue("@categoryId", product.CategoryId);
+                p.AddWithValue("@imageUrl", (object?)product.ImageUrl ?? DBNull.Value);
+            },
+            ct);
     }
 
-    public async Task<IEnumerable<Product>> SearchAsync(string searchTerm, decimal? maxPrice, CancellationToken cancellationToken)
+    public async Task DeleteAsync(int id, CancellationToken ct = default)
     {
-        var sql = $"""
-                 SELECT {IdColumn}, {NameColumn}, {CategoryColumn}, {DescriptionColumn}, {PriceColumn}
-                 FROM {TableName}
-                 WHERE {NameColumn} LIKE @pattern ESCAPE '\\'
-                    OR {DescriptionColumn} LIKE @pattern ESCAPE '\\'
-                 ORDER BY {NameColumn};
-                 """;
-
-        if (maxPrice.HasValue)
-        {
-            sql = $"""
-                     SELECT {IdColumn}, {NameColumn}, {CategoryColumn}, {DescriptionColumn}, {PriceColumn}
-                     FROM {TableName}
-                     WHERE ({NameColumn} LIKE @pattern ESCAPE '\\'
-                        OR {DescriptionColumn} LIKE @pattern ESCAPE '\\')
-                       AND {PriceColumn} <= @maxPrice
-                     ORDER BY {NameColumn};
-                     """;
-        }
-
-        var parameters = new List<SqlParameter>
-        {
-            new SqlParameter("@pattern", SqlDbType.NVarChar, SearchPatternLength)
-            {
-                Value = $"%{EscapeLikePattern(searchTerm ?? string.Empty)}%"
-            }
-        };
-
-        if (maxPrice.HasValue)
-        {
-            var maxPriceParameter = new SqlParameter("@maxPrice", SqlDbType.Decimal)
-            {
-                Precision = PricePrecision,
-                Scale = PriceScale,
-                Value = maxPrice.Value
-            };
-
-            parameters.Add(maxPriceParameter);
-        }
-
-        return await QueryAsync(sql, parameters, MapProduct, cancellationToken).ConfigureAwait(false);
+        const string sql = "DELETE FROM Products WHERE Id = @id";
+        await ExecuteAsync(sql, p => p.AddWithValue("@id", id), ct);
     }
 
-    private static Product MapProduct(SqlDataReader reader)
+    public async Task<Dictionary<int, string>> GetCategoryMapAsync(CancellationToken ct = default)
     {
-        var descriptionOrdinal = reader.GetOrdinal(DescriptionColumn);
+        var map = new Dictionary<int, string>();
 
-        return new Product
-        {
-            Id = reader.GetInt32(reader.GetOrdinal(IdColumn)),
-            Name = reader.GetString(reader.GetOrdinal(NameColumn)),
-            Category = reader.GetString(reader.GetOrdinal(CategoryColumn)),
-            Description = reader.IsDBNull(descriptionOrdinal) ? null : reader.GetString(descriptionOrdinal),
-            Price = reader.GetDecimal(reader.GetOrdinal(PriceColumn))
-        };
+        await using var conn = await _factory.CreateOpenConnectionAsync(ct);
+        await using var cmd = new SqlCommand("SELECT Id, Name FROM Categories ORDER BY Name", conn);
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+
+        while (await reader.ReadAsync(ct))
+            map.Add(reader.GetInt32(0), reader.GetString(1));
+
+        return map;
     }
 
-    private static string EscapeLikePattern(string value)
+    private static Product Map(SqlDataReader r) => new()
     {
-        return value.Replace("\\", "\\\\", StringComparison.Ordinal)
-            .Replace("%", "\\%", StringComparison.Ordinal)
-            .Replace("_", "\\_", StringComparison.Ordinal);
-    }
+        Id = r.GetInt32(r.GetOrdinal("Id")),
+        Name = r.GetString(r.GetOrdinal("Name")),
+        Description = r.IsDBNull(r.GetOrdinal("Description")) ? null : r.GetString(r.GetOrdinal("Description")),
+        Price = r.GetDecimal(r.GetOrdinal("Price")),
+        Stock = r.GetInt32(r.GetOrdinal("Stock")),
+        CategoryId = r.GetInt32(r.GetOrdinal("CategoryId")),
+        ImageUrl = r.IsDBNull(r.GetOrdinal("ImageUrl")) ? null : r.GetString(r.GetOrdinal("ImageUrl"))
+    };
 }

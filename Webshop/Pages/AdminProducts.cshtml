@@ -1,0 +1,51 @@
+﻿@page
+@model Webshop.Pages.AdminProductsModel
+@{
+    ViewData["Title"] = "Produktadministration";
+}
+
+<h1>Produktadministration</h1>
+
+<p>
+    <a asp-page="/AdminProductEdit" class="btn btn-primary">Opret nyt produkt</a>
+</p>
+
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Billede</th>
+            <th>Navn</th>
+            <th>Kategori</th>
+            <th>Pris</th>
+            <th>Lager</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var product in Model.Products)
+        {
+            <tr>
+                <td style="width:80px;">
+                    @if (!string.IsNullOrEmpty(product.ImageUrl))
+                    {
+                        <img src="@product.ImageUrl" alt="@product.Name"
+                             style="max-width:70px; max-height:70px; object-fit:cover;" />
+                    }
+                </td>
+                <td>@product.Name</td>
+                <td>@Model.CategoryName(product.CategoryId)</td>
+                <td>@product.Price.ToString("C")</td>
+                <td>@product.Stock</td>
+                <td>
+                    <a asp-page="/AdminProductEdit" asp-route-id="@product.Id"
+                       class="btn btn-sm btn-outline-secondary">Rediger</a>
+
+                    <form method="post" asp-page-handler="Delete" asp-route-id="@product.Id"
+                          class="d-inline" onsubmit="return confirm('Slet dette produkt?');">
+                        <button type="submit" class="btn btn-sm btn-outline-danger">Slet</button>
+                    </form>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>

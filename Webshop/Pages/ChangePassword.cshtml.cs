@@ -3,10 +3,10 @@ using System.Security.Claims;
 using System.Threading;
 using System.Threading.Tasks;
 using Isopoh.Cryptography.Argon2;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using Webshop.Model;
 using Webshop.Model.Repos;
 using Webshop.Model.Services;
 
@@ -16,15 +16,15 @@ namespace Webshop.Pages;
 public class ChangePasswordModel : PageModel
 {
     private readonly IUserRepository _userRepository;
-    private readonly PasswordBlocklist _blocklist;
+    private readonly PasswordPolicyService _passwordPolicy;
     private readonly ILogger<ChangePasswordModel> _logger;
 
     public ChangePasswordModel(IUserRepository userRepository,
-                                   PasswordBlocklist blocklist,
-                                   ILogger<ChangePasswordModel> logger)
+                               PasswordPolicyService passwordPolicy,
+                               ILogger<ChangePasswordModel> logger)
     {
         _userRepository = userRepository;
-        _blocklist = blocklist;
+        _passwordPolicy = passwordPolicy;
         _logger = logger;
     }
 
@@ -62,24 +62,24 @@ public class ChangePasswordModel : PageModel
         if (user is null)
             return Challenge();
 
-        // 1. Verificér nuværende adgangskode mod hash i DB.
-        //    Generisk fejlbesked — afslører ikke OM brugernavnet eller koden var forkert.
+
         if (!Argon2.Verify(user.PasswordHash, Input.CurrentPassword))
         {
-            _logger.LogWarning("Fejlet skift af adgangskode (forkert nuværende kode) for bruger {UserId}", userId.Value);
+            _logger.LogWarning("Fejlet skift af adgangskode (forkert nuværende kode) for bruger {UserId}",
+                userId.Value);
             ModelState.AddModelError(string.Empty, "Din nuværende adgangskode er forkert.");
             return Page();
         }
 
-        // 2. Kør HELE password-politikken igen — skift må ikke være en genvej udenom reglerne
-        var policyError = ValidatePasswordPolicy(Input.NewPassword, user.UserName, user.Email);
-        if (policyError is not null)
-        {
-            ModelState.AddModelError("Input.NewPassword", policyError);
-            return Page();
-        }
 
-        // 3. Genbrugs-tjek: ny kode må ikke være den gamle
+        var policyErrors = _passwordPolicy.Validate(Input.NewPassword, user.UserName, user.Email);
+        foreach (var error in policyErrors)
+            ModelState.AddModelError("Input.NewPassword", error);
+
+        if (policyErrors.Count > 0)
+            return Page();
+
+
         if (Argon2.Verify(user.PasswordHash, Input.NewPassword))
         {
             ModelState.AddModelError("Input.NewPassword",
@@ -87,7 +87,6 @@ public class ChangePasswordModel : PageModel
             return Page();
         }
 
-        // 4. Gem (Argon2.Hash sker inde i repository'et)
         var updated = await _userRepository.UpdatePasswordAsync(userId.Value, Input.NewPassword, ct);
         if (!updated)
         {
@@ -98,30 +97,9 @@ public class ChangePasswordModel : PageModel
 
         _logger.LogInformation("Bruger {UserId} skiftede adgangskode", userId.Value);
 
-        // 5. Ryd session og cookie, og kræv re-login med den nye kode
         HttpContext.Session.Clear();
         TempData["StatusMessage"] = "Din adgangskode er ændret. Log ind med din nye adgangskode.";
-        return SignOut(new Microsoft.AspNetCore.Authentication.AuthenticationProperties
-        {
-            RedirectUri = "/Login"
-        });
-    }
-
-    private string? ValidatePasswordPolicy(string password, string username, string email)
-    {
-        if (password.Length < 8)
-            return "Adgangskoden skal være mindst 8 tegn.";
-        if (!password.Any(char.IsDigit))
-            return "Adgangskoden skal indeholde mindst ét tal.";
-        if (!password.Any(c => !char.IsLetterOrDigit(c)))
-            return "Adgangskoden skal indeholde mindst ét specialtegn.";
-        if (password.Contains(username, StringComparison.OrdinalIgnoreCase))
-            return "Adgangskoden må ikke indeholde dit brugernavn.";
-        if (password.Contains(email, StringComparison.OrdinalIgnoreCase))
-            return "Adgangskoden må ikke indeholde din e-mail.";
-        if (_blocklist.IsBreached(password))
-            return "Adgangskoden er for almindelig — vælg en mere unik adgangskode.";
-        return null;
+        return SignOut(new AuthenticationProperties { RedirectUri = "/Login" });
     }
 
     private int? GetCurrentUserId()

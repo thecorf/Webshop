@@ -1,4 +1,3 @@
-using Isopoh.Cryptography.Argon2;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Mvc;
@@ -13,21 +12,19 @@ namespace Webshop.Pages;
 
 public class RegisterModel : PageModel
 {
-    private const int MinLength = 8;
-
     private readonly IUserRepository _userRepository;
     private readonly ISessionService _sessionService;
-    private readonly PasswordBlocklist _blocklist;
+    private readonly PasswordPolicyService _passwordPolicy;
     private readonly ILogger<RegisterModel> _logger;
 
     public RegisterModel(IUserRepository userRepository,
                          ISessionService sessionService,
-                         PasswordBlocklist blocklist,
+                         PasswordPolicyService passwordPolicy,
                          ILogger<RegisterModel> logger)
     {
         _userRepository = userRepository;
         _sessionService = sessionService;
-        _blocklist = blocklist;
+        _passwordPolicy = passwordPolicy;
         _logger = logger;
     }
 
@@ -66,6 +63,15 @@ public class RegisterModel : PageModel
         if (!ModelState.IsValid)
             return Page();
 
+
+        var policyErrors = _passwordPolicy.Validate(Input.Password, Input.UserName, Input.Email);
+        foreach (var error in policyErrors)
+            ModelState.AddModelError("Password", error);
+
+        if (policyErrors.Count > 0)
+            return Page();
+
+
         var existingUser = await _userRepository.GetByUsernameAsync(Input.UserName);
         if (existingUser != null)
         {
@@ -77,37 +83,6 @@ public class RegisterModel : PageModel
         if (existingEmail != null)
         {
             ModelState.AddModelError("Email", "E-mail-addresset er allerede i brug.");
-            return Page();
-        }
-
-        if (Input.Password.Length < MinLength)
-        {
-            ModelState.AddModelError("Password", $"Adgangskoden skal være mindst {MinLength} tegn.");
-            return Page();
-        }
-
-        if (!HasDigit(Input.Password))
-        {
-            ModelState.AddModelError("Password", "Adgangskoden skal indeholde mindst ét tal.");
-            return Page();
-        }
-
-        if (!HasSpecialChar(Input.Password))
-        {
-            ModelState.AddModelError("Password", "Adgangskoden skal indeholde mindst ét specialtegn.");
-            return Page();
-        }
-
-        if (Input.Password.Contains(Input.UserName, StringComparison.OrdinalIgnoreCase) ||
-            Input.Password.Contains(Input.Email.Split('@')[0], StringComparison.OrdinalIgnoreCase))
-        {
-            ModelState.AddModelError("Password", "Adgangskoden må ikke indeholde brugernavn eller email.");
-            return Page();
-        }
-
-        if (_blocklist.IsBreached(Input.Password))
-        {
-            ModelState.AddModelError("Password", "Adgangskoden findes på kendte lister over lækkede kodeord.");
             return Page();
         }
 
@@ -123,8 +98,8 @@ public class RegisterModel : PageModel
         {
             var createdUser = await _userRepository.CreateUserAsync(newUser, Input.Password);
 
-            _logger.LogInformation("Ny bruger '{UserName}' registreret med e-mail {Email}",
-                createdUser.UserName, createdUser.Email);
+            _logger.LogInformation("Ny bruger '{UserName}' registreret", createdUser.UserName);
+
             await AutoSignIn(createdUser);
         }
         catch (Exception ex)
@@ -138,16 +113,16 @@ public class RegisterModel : PageModel
         return RedirectToPage("/Login");
     }
 
-    private static bool HasDigit(string password) => password.Any(char.IsDigit);
-    private static bool HasSpecialChar(string password) => password.Any(c => char.IsPunctuation(c) || char.IsSymbol(c));
-
     private async Task AutoSignIn(User user)
     {
         var claims = new List<Claim>
         {
             new(ClaimTypes.NameIdentifier, user.Id.ToString()),
             new(ClaimTypes.Name, user.UserName),
-            new(ClaimTypes.Role, user.Role == Webshop.Model.User.UserRole.Admin ? "Admin" : "Customer")
+            new(ClaimTypes.Role, user.Role == Webshop.Model.User.UserRole.Admin ? "Admin" : "Customer"),
+            new(ClaimTypes.GivenName,
+                user.FullName.Split(' ', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault()
+                ?? user.UserName)
         };
 
         var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);

@@ -18,6 +18,7 @@ builder.Services.AddScoped<IOrderRepository, OrderRepository>();
 builder.Services.AddSingleton<Webshop.Model.Services.Payments.IPaymentMethod,Webshop.Model.Services.Payments.CardPaymentMethod>();
 builder.Services.AddSingleton<Webshop.Model.Services.Payments.IPaymentMethod,Webshop.Model.Services.Payments.InvoicePaymentMethod>();
 builder.Services.AddSingleton<Webshop.Model.Services.Payments.PaymentMethodFactory>();
+builder.Services.AddSingleton<PasswordPolicyService>();
 
 builder.Services.AddScoped<Webshop.Model.Services.CheckoutFacade>();
 

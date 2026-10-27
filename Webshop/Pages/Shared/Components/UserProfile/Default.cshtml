@@ -27,8 +27,12 @@
                     </svg>
                 </span>
             </div>
-            
-            <span class="small fw-medium mt-1" style="color:#333;">Hej @Model.UserName</span>
+            @{
+                var firstName = User.FindFirst(System.Security.Claims.ClaimTypes.GivenName)?.Value
+                ?? User.Identity?.Name ?? "du";
+            }
+
+            <span class="small fw-medium mt-1" style="color:#333;">Hej @firstName</span>
         </button>
 
         @* Dropdown-menu *@
@@ -38,8 +42,22 @@
                 <strong>@Model.UserName</strong>
                 @if (Model.IsAdmin)
                 {
-                    <br><small class="text-muted">Administrator</small>
-                }
+                <li>
+                    <a class="dropdown-item" asp-page="/AdminProducts">
+                        Rediger produkter
+                    </a>
+                </li>
+                <li><hr class="dropdown-divider"></li>
+            }
+            <li>
+                <a class="dropdown-item" asp-page="/OrderHistory">
+                    Min ordrehistorik
+                </a>
+            </li>
+            <li>
+                <a class="dropdown-item" asp-page="/ChangePassword">
+                    Skift adgangskode
+                </a>
             </li>
 
             @if (Model.IsAdmin)

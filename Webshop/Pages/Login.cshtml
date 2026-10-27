@@ -5,7 +5,10 @@
 }
 
 <h1>Log ind</h1>
-
+@if (TempData["StatusMessage"] is string status)
+{
+    <div class="alert alert-success">@status</div>
+}
 <form method="post">
     <div asp-validation-summary="ModelOnly" class="text-danger"></div>
 

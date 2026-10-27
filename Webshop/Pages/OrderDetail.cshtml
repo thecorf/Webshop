@@ -1,0 +1,73 @@
+﻿@page "{id:int}"
+@model Webshop.Pages.OrderDetailModel
+@{
+    ViewData["Title"] = $"Ordre #{Model.Order?.Id}";
+}
+
+<div class="container py-5">
+    @if (Model.NotFound)
+    {
+        <div class="alert alert-danger">Ordren blev ikke fundet.</div>
+        <a asp-page="/OrderHistory" class="btn btn-outline-secondary">Tilbage til historik</a>
+    }
+    else if (Model.Forbidden)
+    {
+        <div class="alert alert-danger">Adgang nægtet til denne ordre.</div>
+        <a asp-page="/OrderHistory" class="btn btn-outline-secondary">Tilbage til historik</a>
+    }
+    else if (Model.Order != null)
+    {
+        <div class="card shadow-sm">
+            <div class="card-body p-4">
+                <div class="text-center mb-4">
+                    <h2>Ordre #@Model.Order.Id</h2>
+                    <p class="text-muted">
+                        Dato: @Model.Order.OrderDate.ToLocalTime().ToString("dd.MM.yyyy HH:mm") ·
+                        Status: <span class="badge bg-@(Model.Order.Status switch
+                                      {
+                                          Webshop.Model.OrderStatus.Paid => "success",
+                                          Webshop.Model.OrderStatus.Pending => "warning",
+                                          Webshop.Model.OrderStatus.Shipped => "primary",
+                                          Webshop.Model.OrderStatus.Cancelled => "danger",
+                                          _ => "secondary"
+                                      })">
+                        @Model.Order.Status
+                    </span>
+                </p>
+            </div>
+
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Produkt</th>
+                            <th class="text-center">Antal</th>
+                            <th class="text-end">Stk. pris</th>
+                            <th class="text-end">I alt</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    @foreach (var line in Model.Order.Lines)
+                        {
+                            <tr>
+                                <td>@line.ProductName</td>
+                                <td class="text-center">@line.Quantity</td>
+                                <td class="text-end">@line.UnitPrice.ToString("N2") kr.</td>
+                                <td class="text-end">@line.LineTotal.ToString("N2") kr.</td>
+                            </tr>
+                        }
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <td colspan="3" class="text-end fw-bold">Total</td>
+                            <td class="text-end fw-bold">@Model.Order.Total.ToString("N2") kr.</td>
+                        </tr>
+                    </tfoot>
+                </table>
+
+                <div class="text-center mt-4">
+                    <a asp-page="/OrderHistory" class="btn btn-outline-secondary">Tilbage til historik</a>
+                </div>
+            </div>
+        </div>
+    }
+</div>

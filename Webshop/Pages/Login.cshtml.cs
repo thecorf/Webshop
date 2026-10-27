@@ -60,12 +60,12 @@ public class LoginModel : PageModel
         // Session rotation (session fixation protection)
         HttpContext.Session.Clear();
 
-        // Cookie-auth med claims
         var claims = new List<Claim>
         {
-            new(ClaimTypes.NameIdentifier, user.Id.ToString()),
-            new(ClaimTypes.Name, user.UserName),
-            new(ClaimTypes.Role, user.Role == Webshop.Model.User.UserRole.Admin ? "Admin" : "Customer")
+            new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
+            new Claim(ClaimTypes.Name, user.UserName),
+            new Claim(ClaimTypes.Role, ((Webshop.Model.User.UserRole)user.Role).ToString()),
+            new Claim(ClaimTypes.GivenName,user.FullName.Split(' ', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault()?? user.UserName)
         };
 
         var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);

@@ -78,9 +78,6 @@ public sealed class UserRepository : SqlRepositoryBase, IUserRepository
             cmd.CommandText = $@"INSERT INTO {TableName} ({UserNameColumn}, {FullNameColumn}, {EmailColumn}, {PasswordHashColumn}, {RoleColumn})
 VALUES (@username, @fullname, @email, @passwordHash, @role);
 SELECT CAST(SCOPE_IDENTITY() AS int);";
-
-            cmd.Parameters.Add(new SqlParameter("@username", SqlDbType.NVarChar, 200) { Value = user.UserName });
-
             cmd.Parameters.Add(new SqlParameter("@username", SqlDbType.NVarChar, 200) { Value = user.UserName });
             cmd.Parameters.Add(new SqlParameter("@fullname", SqlDbType.NVarChar, 200) { Value = user.FullName });
             cmd.Parameters.Add(new SqlParameter("@email", SqlDbType.NVarChar, 320) { Value = user.Email });

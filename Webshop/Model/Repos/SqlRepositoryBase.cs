@@ -12,7 +12,6 @@ public abstract class SqlRepositoryBase
 
     protected SqlRepositoryBase(IDbConnectionFactory factory) => _factory = factory;
 
-    // ---------- NY STIL: bind-callback (sql, map, bind, ct) ----------
 
     protected async Task<List<T>> QueryAsync<T>(
         string sql, Func<SqlDataReader, T> map,
@@ -56,9 +55,6 @@ public abstract class SqlRepositoryBase
         return (T)Convert.ChangeType(result, typeof(T));
     }
 
-    // ---------- GAMMEL STIL: parameter-array (sql, parameters, map, ct) ----------
-    // Kompatibilitets-overloads så UserRepository (skrevet mod den gamle
-    // signatur) fortsat kompilerer urørt.
 
     protected Task<List<T>> QueryAsync<T>(
         string sql, IEnumerable<SqlParameter>? parameters,
@@ -81,7 +77,6 @@ public abstract class SqlRepositoryBase
             p => { if (parameters != null) foreach (var par in parameters) p.Add(par); },
             ct);
 
-    // ---------- UNIT OF WORK (transaktion) ----------
 
     protected async Task<T> InTransactionAsync<T>(
         Func<SqlConnection, SqlTransaction, Task<T>> work,
@@ -92,12 +87,12 @@ public abstract class SqlRepositoryBase
         try
         {
             var result = await work(conn, tx);
-            await tx.CommitAsync(ct);      // Korrekt: på transaktionen, ikke connection
+            await tx.CommitAsync(ct);
             return result;
         }
         catch
         {
-            await tx.RollbackAsync(ct);   // Korrekt: på transaktionen, ikke connection
+            await tx.RollbackAsync(ct);
             throw;
         }
     }

@@ -36,8 +36,9 @@ public class AdminProductEditModel : PageModel
         [StringLength(200)]
         public string Name { get; set; } = "";
 
+        // Valgfrit felt: nullable ⇒ ingen implicit required.
         [StringLength(2000)]
-        public string Description { get; set; } = "";
+        public string? Description { get; set; }
 
         [Required(ErrorMessage = "Pris er påkrævet.")]
         [Range(0.01, 1_000_000, ErrorMessage = "Prisen skal være et positivt beløb.")]
@@ -50,10 +51,11 @@ public class AdminProductEditModel : PageModel
         [Required(ErrorMessage = "Kategori er påkrævet.")]
         public int CategoryId { get; set; }
 
+        // Valgfrit felt: nullable ⇒ må være blankt.
         [StringLength(500, ErrorMessage = "Billede-URL må maks være 500 tegn.")]
         [RegularExpression(@"^(https?://|/)[^\s]*$",
             ErrorMessage = "Billede-URL skal starte med http(s):// eller / og må ikke indeholde mellemrum.")]
-        public string ImageUrl { get; set; } = "";
+        public string? ImageUrl { get; set; }
     }
 
     public async Task OnGetAsync(int? id, CancellationToken ct)
@@ -74,18 +76,17 @@ public class AdminProductEditModel : PageModel
             {
                 Id = product.Id,
                 Name = product.Name,
-                Description = product.Description ?? "",
+                Description = product.Description,   
                 Price = product.Price,
                 Stock = product.Stock,
                 CategoryId = product.CategoryId,
-                ImageUrl = product.ImageUrl ?? ""
+                ImageUrl = product.ImageUrl          
             };
         }
     }
 
     public async Task<IActionResult> OnPostAsync(CancellationToken ct)
     {
-        // Forsvar i dybden
         if (!User.IsInRole("Admin"))
             return Forbid();
 
@@ -95,7 +96,6 @@ public class AdminProductEditModel : PageModel
             return Page();
         }
 
-        // NORMALISERING: tom streng → null (renere i databasen)
         var imageUrl = string.IsNullOrWhiteSpace(Input.ImageUrl) ? null : Input.ImageUrl.Trim();
         var description = string.IsNullOrWhiteSpace(Input.Description) ? null : Input.Description.Trim();
 

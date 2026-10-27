@@ -11,43 +11,34 @@
 </head>
 <body>
     <header>
-        <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-light bg-white border-bottom box-shadow mb-3">
+        <!-- Topbar (FORSIKKER: kun navbars der vises på alle sider) -->
+        <nav class="navbar navbar-expand-lg navbar-light bg-white border-bottom sticky-top">
             <div class="container">
-                <a class="navbar-brand" asp-area="" asp-page="/Index">Webshop</a>
-                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse" aria-controls="navbarSupportedContent"
-                        aria-expanded="false" aria-label="Toggle navigation">
+                <!-- Logo / Home -->
+                <a class="navbar-brand fw-bold" asp-page="/Index">
+                    Coffee Shop
+                </a>
+
+                <!-- Hamburger-menu til mobil -->
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarContent">
                     <span class="navbar-toggler-icon"></span>
                 </button>
-                <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
-                    <ul class="navbar-nav flex-grow-1">
-                        <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-page="/Index">Home</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-page="/Register">Registrer</a>
-                        </li>
-                        <li class="nav-item">
-                            @if (User.Identity?.IsAuthenticated == true)
-                            {
-                                <form method="post" asp-page="/Logout" class="d-inline">
-                                    <button type="submit" class="nav-link btn btn-link">Log ud</button>
-                                </form>
-                            }
-                            else
-                            {
-                                <a class="nav-link text-dark" asp-area="" asp-page="/Login">Log ind</a>
-                            }
-                        </li>
+
+                <!-- Centralt navigationsindhold -->
+                <div class="collapse navbar-collapse" id="navbarContent">
+                    <!-- Venstre side: Produkter-link -->
+                    <ul class="navbar-nav me-auto mb-2 mb-lg-0">
                         <li class="nav-item">
                             <a class="nav-link" asp-page="/Products">Produkter</a>
                         </li>
-                        @if (User.IsInRole("Admin"))
-                        {
-                            <li class="nav-item">
-                                <a class="nav-link" asp-page="/AdminProducts">Administration</a>
-                            </li>
-                        }
                     </ul>
+
+                    <!-- Højre side: Kurv + Profil -->
+                    <div class="d-flex align-items-center gap-3">
+                        @await Component.InvokeAsync("CartBadge")
+                        <div class="vr" style="height: 32px;"></div>
+                        @await Component.InvokeAsync("UserProfile")
+                    </div>
                 </div>
             </div>
         </nav>

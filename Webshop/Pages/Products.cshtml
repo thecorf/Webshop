@@ -1,0 +1,65 @@
+﻿@page
+@model Webshop.Pages.ProductsModel
+@{
+    ViewData["Title"] = "Produkter";
+}
+
+<h1>Vores kaffe</h1>
+
+<form method="get" class="row g-2 mb-4">
+    <div class="col-md-6">
+        <input type="search" asp-for="Query" class="form-control"
+               placeholder="Søg efter kaffe, kværn, bryggeri..." aria-label="Søg" />
+    </div>
+    <div class="col-auto">
+        <button type="submit" class="btn btn-primary">Søg</button>
+    </div>
+</form>
+
+<div class="mb-4">
+    <a asp-page="/Products" asp-route-q="@Model.Query"
+       class="btn btn-sm @(Model.CategoryId is null ? "btn-dark" : "btn-outline-dark") me-1">Alle</a>
+    @foreach (var cat in Model.Categories)
+    {
+        <a asp-page="/Products" asp-route-categoryId="@cat.Key" asp-route-q="@Model.Query"
+           class="btn btn-sm @(Model.CategoryId == cat.Key ? "btn-dark" : "btn-outline-dark") me-1">@cat.Value</a>
+    }
+</div>
+
+@if (Model.Products.Count == 0)
+{
+    <div class="alert alert-info">Ingen produkter matchede din søgning.</div>
+}
+else
+{
+    <div class="row row-cols-1 row-cols-md-3 g-4">
+        @foreach (var product in Model.Products)
+        {
+            <div class="col">
+                <div class="card h-100">
+                    @if (!string.IsNullOrEmpty(product.ImageUrl))
+                    {
+                        <img src="@product.ImageUrl" class="card-img-top" alt="@product.Name"
+                             style="height:180px; object-fit:cover;" loading="lazy" />
+                    }
+                    <div class="card-body d-flex flex-column">
+                        <h5 class="card-title">@product.Name</h5>
+                        <p class="card-text small text-truncate">@product.Description</p>
+                        <p class="fw-bold mb-1 mt-auto">@product.Price.ToString("N2") kr.</p>
+                        @if (product.Stock > 0)
+                        {
+                            <form method="post" asp-page-handler="AddToCart" class="mt-2">
+                                <input type="hidden" name="productId" value="@product.Id" />
+                                <button type="submit" class="btn btn-sm btn-success w-100">Læg i kurv</button>
+                            </form>
+                        }
+                        else
+                        {
+                            <button type="button" class="btn btn-sm btn-secondary w-100 mt-2" disabled>Udsolgt</button>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}

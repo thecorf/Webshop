@@ -1,0 +1,77 @@
+﻿@page
+@model Webshop.Pages.CartModel
+@{
+    ViewData["Title"] = "Din kurv";
+}
+
+<h1>Din kurv</h1>
+
+@if (TempData["CartMessage"] is string msg)
+{
+    <div class="alert alert-info">@msg</div>
+}
+
+@if (Model.Lines.Count == 0)
+{
+    <div class="alert alert-info">Din kurv er tom.</div>
+    <a asp-page="/Products" class="btn btn-primary">Se vores produkter</a>
+}
+else
+{
+    <table class="table align-middle">
+        <thead>
+            <tr>
+                <th>Produkt</th>
+                <th class="text-end">Pris</th>
+                <th style="width:140px;">Antal</th>
+                <th class="text-end">Samlet</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var line in Model.Lines)
+            {
+                <tr>
+                    <td>
+                        @if (!string.IsNullOrEmpty(line.ImageUrl))
+                        {
+                            <img src="@line.ImageUrl" alt="@line.Name"
+                                 style="width:48px; height:48px; object-fit:cover;" class="me-2 rounded" />
+                        }
+                        @line.Name
+                        <span class="d-block small text-muted">(@line.Stock på lager)</span>
+                    </td>
+                    <td class="text-end">@line.UnitPrice.ToString("N2") kr.</td>
+                    <td>
+                        <form method="post" asp-page-handler="Update" class="d-flex gap-1">
+                            <input type="hidden" name="productId" value="@line.ProductId" />
+                            <input type="number" name="quantity" value="@line.Quantity"
+                                   min="1" max="@line.Stock" class="form-control form-control-sm" />
+                            <button type="submit" class="btn btn-sm btn-outline-secondary">Opdatér</button>
+                        </form>
+                    </td>
+                    <td class="text-end">@line.LineTotal.ToString("N2") kr.</td>
+                    <td class="text-end">
+                        <form method="post" asp-page-handler="Remove">
+                            <input type="hidden" name="productId" value="@line.ProductId" />
+                            <button type="submit" class="btn btn-sm btn-outline-danger">Fjern</button>
+                        </form>
+                    </td>
+                </tr>
+            }
+        </tbody>
+        <tfoot>
+            <tr>
+                <td colspan="3" class="text-end fw-bold">Subtotal</td>
+                <td class="text-end fw-bold">@Model.Total.ToString("N2") kr.</td>
+                <td></td>
+            </tr>
+        </tfoot>
+    </table>
+
+    <div class="d-flex justify-content-between">
+        <a asp-page="/Products" class="btn btn-outline-secondary">Fortsæt med at handle</a>
+        @* Checkout-siden bygges i næste trin — indtil da: *@
+        @* <a asp-page="/Checkout" class="btn btn-primary">Til betaling</a> *@
+    </div>
+}

@@ -34,17 +34,23 @@ public class ProductRepository : SqlRepositoryBase, IProductRepository
 
     public async Task<List<Product>> SearchAsync(string searchTerm, CancellationToken ct = default)
     {
+        // Escape wildcard-tegn i brugerinput, så % og _ behandles bogstaveligt.
+        // Backslash escapes FØRST — ellers fordobles escape-tegnene fra de efterfølgende replaces.
         var escaped = searchTerm
             .Replace("\\", "\\\\")
             .Replace("%", "\\%")
             .Replace("_", "\\_");
 
+        // NB: verbatim-streng (@"...") fortolker IKKE escapes — derfor ESCAPE '\'
+        // med ÉN backslash. ESCAPE '\\' ville sende to tegn til SQL Server og fejle.
+        const string sql = @"SELECT Id, Name, Description, Price, Stock, CategoryId, ImageUrl
+              FROM Products
+              WHERE Name LIKE @term ESCAPE '\'
+                 OR Description LIKE @term ESCAPE '\'
+              ORDER BY Name";
+
         return await QueryAsync(
-            @"SELECT Id, Name, Description, Price, Stock, CategoryId, ImageUrl 
-              FROM Products 
-              WHERE Name LIKE @term ESCAPE '\\' 
-                 OR Description LIKE @term ESCAPE '\\'
-              ORDER BY Name",
+            sql,
             Map,
             p => p.AddWithValue("@term", $"%{escaped}%"),
             ct);

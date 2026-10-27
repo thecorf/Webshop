@@ -2,33 +2,29 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using Webshop.Model.Services;
 
 namespace Webshop.Pages;
 
 public class LogoutModel : PageModel
 {
-    private readonly ISessionService _sessionService;
     private readonly ILogger<LogoutModel> _logger;
 
-    public LogoutModel(ISessionService sessionService, ILogger<LogoutModel> logger)
+    public LogoutModel(ILogger<LogoutModel> logger)
     {
-        _sessionService = sessionService;
         _logger = logger;
     }
 
-    public async Task<IActionResult> OnPostAsync()
+    public IActionResult OnPost()
     {
-        // Sign ud af cookie-auth FØR sessionen røres
-        await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+        _logger.LogInformation("Bruger {User} loggede ud",
+            HttpContext.User.Identity?.Name ?? "ukendt");
 
-        // Total session-rydning: alle data væk ved logout
+        // Tøm session FØR signout — kurv og alt andet state ryddes,
+        // så en evt. ny bruger på samme browser ikke arver kurven
         HttpContext.Session.Clear();
-        _sessionService.ClearSession(HttpContext);
 
-        _logger.LogInformation("Bruger logget ud. UserId var {UserId}",
-            User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value);
-
-        return RedirectToPage("/Index");
+        return SignOut(
+            new AuthenticationProperties { RedirectUri = "/" },
+            CookieAuthenticationDefaults.AuthenticationScheme);
     }
 }

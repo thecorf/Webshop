@@ -1,0 +1,63 @@
+﻿@page
+@model Webshop.Pages.OrderConfirmationModel
+@{
+    ViewData["Title"] = "Ordrebekræftelse";
+}
+
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card shadow-sm">
+                <div class="card-body p-4">
+                    <div class="text-center mb-4">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="56" height="56" viewBox="0 0 24 24"
+                             fill="none" stroke="#28a745" stroke-width="1.6" stroke-linecap="round"
+                             stroke-linejoin="round" class="mb-2">
+                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                            <polyline points="22 4 12 14.01 9 11.01" />
+                        </svg>
+                        <h2>Tak for din ordre!</h2>
+                        <p class="text-muted">Ordrenummer #@Model.Order!.Id</p>
+                    </div>
+
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Produkt</th>
+                                <th class="text-center">Antal</th>
+                                <th class="text-end">Stk. pris</th>
+                                <th class="text-end">I alt</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var line in Model.Order.Lines)
+                            {
+                                <tr>
+                                    <td>@line.ProductName</td>
+                                    <td class="text-center">@line.Quantity</td>
+                                    <td class="text-end">@line.UnitPrice.ToString("N2") kr.</td>
+                                    <td class="text-end">@line.LineTotal.ToString("N2") kr.</td>
+                                </tr>
+                            }
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <td colspan="3" class="text-end fw-bold">Total</td>
+                                <td class="text-end fw-bold">@Model.Order.Total.ToString("N2") kr.</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+
+                    <p class="text-muted small mb-0">
+                        Afsendt: @Model.Order.OrderDate.ToLocalTime().ToString("dd.MM.yyyy HH:mm") ·
+                        Status: @Model.Order.Status
+                    </p>
+
+                    <div class="text-center mt-4">
+                        <a asp-page="/Products" class="btn btn-primary">Fortsæt med at handle</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

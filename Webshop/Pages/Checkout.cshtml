@@ -1,0 +1,86 @@
+﻿@page
+@model Webshop.Pages.CheckoutModel
+@{
+    ViewData["Title"] = "Betaling";
+}
+
+<h1>Checkout</h1>
+
+@if (Model.Lines.Count == 0)
+{
+    <div class="alert alert-info">Din kurv er tom.</div>
+    <a asp-page="/Products" class="btn btn-primary">Se vores produkter</a>
+}
+else
+{
+    <div class="row g-4">
+        <div class="col-md-7">
+            <h5 class="mb-3">Ordreoversigt</h5>
+            <table class="table align-middle">
+                <tbody>
+                    @foreach (var line in Model.Lines)
+                    {
+                        <tr>
+                            <td>@line.ProductName</td>
+                            <td class="text-center" style="width:90px;">@line.Quantity stk.</td>
+                            <td class="text-end" style="width:120px;">@line.LineTotal.ToString("N2") kr.</td>
+                        </tr>
+                    }
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td colspan="2" class="text-end fw-bold">I alt</td>
+                        <td class="text-end fw-bold">@Model.Total.ToString("N2") kr.</td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+
+        <div class="col-md-5">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title mb-3">Betaling</h5>
+                    <div asp-validation-summary="All" class="text-danger"></div>
+
+                    <form method="post">
+                        <div class="mb-3">
+                            <label class="form-label d-block">Betalingsmetode</label>
+                            @foreach (var method in Model.PaymentMethods)
+                            {
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" asp-for="Input.PaymentMethod"
+                                           value="@method.Key" id="pm-@method.Key"
+                                           checked="@(Model.Input.PaymentMethod == method.Key)" />
+                                    <label class="form-check-label" for="pm-@method.Key">@method.DisplayName</label>
+                                </div>
+                            }
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="Input.CardNumber" class="form-label">Kortnummer</label>
+                            <input asp-for="Input.CardNumber" class="form-control"
+                                   autocomplete="cc-number" inputmode="numeric"
+                                   placeholder="Kun ved kortbetaling" />
+                        </div>
+                        <div class="row g-2 mb-3">
+                            <div class="col-6">
+                                <label asp-for="Input.CardExpiry" class="form-label">Udløb (MM/ÅÅ)</label>
+                                <input asp-for="Input.CardExpiry" class="form-control"
+                                       autocomplete="cc-exp" placeholder="12/30" />
+                            </div>
+                            <div class="col-6">
+                                <label asp-for="Input.CardCvc" class="form-label">CVC</label>
+                                <input asp-for="Input.CardCvc" class="form-control"
+                                       autocomplete="cc-csc" placeholder="123" />
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn btn-success btn-lg w-100">
+                            Betal @Model.Total.ToString("N2") kr.
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+}

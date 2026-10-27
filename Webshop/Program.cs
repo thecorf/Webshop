@@ -14,7 +14,12 @@ builder.Services.AddSingleton<IDbConnectionFactory, SqlConnectionFactory>();
 
 
 builder.Services.AddScoped<IProductRepository, ProductRepository>();
+builder.Services.AddScoped<IOrderRepository, OrderRepository>();
+builder.Services.AddSingleton<Webshop.Model.Services.Payments.IPaymentMethod,Webshop.Model.Services.Payments.CardPaymentMethod>();
+builder.Services.AddSingleton<Webshop.Model.Services.Payments.IPaymentMethod,Webshop.Model.Services.Payments.InvoicePaymentMethod>();
+builder.Services.AddSingleton<Webshop.Model.Services.Payments.PaymentMethodFactory>();
 
+builder.Services.AddScoped<Webshop.Model.Services.CheckoutFacade>();
 
 builder.Services.AddRazorPages();
 

@@ -7,7 +7,7 @@
 <h1>Produktadministration</h1>
 
 <p>
-    <a asp-page="/AdminProductEdit" class="btn btn-primary">Opret nyt produkt</a>
+    <a asp-page="/AdminProductsEdit" class="btn btn-primary">Opret nyt produkt</a>
 </p>
 
 <table class="table table-striped">
@@ -37,7 +37,7 @@
                 <td>@product.Price.ToString("C")</td>
                 <td>@product.Stock</td>
                 <td>
-                    <a asp-page="/AdminProductEdit" asp-route-id="@product.Id"
+                    <a asp-page="/AdminProductsEdit" asp-route-id="@product.Id"
                        class="btn btn-sm btn-outline-secondary">Rediger</a>
 
                     <form method="post" asp-page-handler="Delete" asp-route-id="@product.Id"

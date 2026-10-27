@@ -1,4 +1,9 @@
 ﻿@page
 @model Webshop.Pages.AccessDeniedModel
 @{
+    ViewData["Title"] = "Adgang nægtet";
 }
+
+<h1>Adgang nægtet</h1>
+<p>Du har ikke rettigheder til at se denne side.</p>
+<a asp-page="/Index" class="btn btn-outline-secondary">Tilbage til forsiden</a>

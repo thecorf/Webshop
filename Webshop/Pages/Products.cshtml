@@ -46,7 +46,17 @@ else
                         <h5 class="card-title">@product.Name</h5>
                         <p class="card-text small text-truncate">@product.Description</p>
                         <p class="fw-bold mb-1 mt-auto">@product.Price.ToString("N2") kr.</p>
-                        @if (product.Stock > 0)
+
+                        @* ADMIN: redigerings-shortcut direkte til AdminProductsEdit (?id= forudfylder formularen).
+                           [Authorize(Roles="Admin")] derinde sikrer, at et manipuleret link er ufarligt for ikke-admins. *@
+                        @if (Model.IsAdmin)
+                        {
+                            <a asp-page="/AdminProductsEdit" asp-route-id="@product.Id"
+                               class="btn btn-sm btn-warning w-100 mt-2">
+                                ✏️ Rediger produkt
+                            </a>
+                        }
+                        else if (product.Stock > 0)
                         {
                             <form method="post" asp-page-handler="AddToCart" class="mt-2">
                                 <input type="hidden" name="productId" value="@product.Id" />

@@ -7,7 +7,14 @@ namespace Webshop.Model;
 public sealed class Order
 {
     public int Id { get; init; }
-    public int UserId { get; init; }
+
+
+    public int? UserId { get; init; }
+
+    public string? GuestEmail { get; init; }
+
+    public Guid? ConfirmationToken { get; init; }
+
     public DateTime OrderDate { get; init; }
     public decimal Total { get; init; }
     public OrderStatus Status { get; init; }

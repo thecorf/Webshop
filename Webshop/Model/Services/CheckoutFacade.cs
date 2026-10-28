@@ -31,7 +31,8 @@ public sealed class CheckoutFacade
 
     public IReadOnlyCollection<IPaymentMethod> AvailablePaymentMethods => _paymentFactory.All;
 
-    public async Task<CheckoutResult> CheckoutAsync(int userId,
+    public async Task<CheckoutResult> CheckoutAsync(int? userId,
+                                                    string? guestEmail,
                                                     string paymentMethodKey,
                                                     PaymentCardDetails? card,
                                                     CancellationToken ct)
@@ -71,7 +72,15 @@ public sealed class CheckoutFacade
         if (method is null)
             return CheckoutResult.Fail("Ugyldig betalingsmetode.");
 
-        var orderReference = $"ORD-{userId}-{DateTimeOffset.UtcNow:yyyyMMddHHmmss}";
+        var isGuest = userId is null;
+        if (isGuest && string.IsNullOrWhiteSpace(guestEmail))
+            return CheckoutResult.Fail("Angiv en e-mail, så vi kan sende din ordrebekræftelse.");
+
+
+        var orderReference = isGuest
+            ? $"ORD-GUEST-{DateTimeOffset.UtcNow:yyyyMMddHHmmss}"
+            : $"ORD-{userId}-{DateTimeOffset.UtcNow:yyyyMMddHHmmss}";
+
         var payment = await method.PayAsync(
             new PaymentRequest(orderReference, total, card?.Number, card?.Expiry, card?.Cvc),
             ct);
@@ -83,15 +92,19 @@ public sealed class CheckoutFacade
             return CheckoutResult.Fail(payment.ErrorMessage ?? "Betalingen kunne ikke gennemføres.");
         }
 
+        var confirmationToken = Guid.NewGuid();
+
         int orderId;
         try
         {
             var order = new Order
             {
                 UserId = userId,
+                GuestEmail = isGuest ? guestEmail!.Trim().ToLowerInvariant() : null,
                 OrderDate = DateTime.UtcNow,
                 Total = total,
                 Status = OrderStatus.Paid,
+                ConfirmationToken = confirmationToken,
                 Lines = lines
             };
             orderId = await _orderRepository.CreateOrderAsync(order, ct);
@@ -105,10 +118,14 @@ public sealed class CheckoutFacade
 
         await _cartService.ClearAsync(ct);
 
-        _logger.LogInformation("Ordre {OrderId} oprettet for bruger {UserId}, {Lines} linjer, total {Total:F2}",
-            orderId, userId, lines.Count, total);
+        _logger.LogInformation(
+            "Ordre {OrderId} oprettet ({OwnerType}), {Lines} linjer, total {Total:F2}",
+            orderId,
+            isGuest ? "GÆST" : $"bruger {userId}",
+            lines.Count,
+            total);
 
-        return CheckoutResult.Ok(orderId);
+        return CheckoutResult.Ok(orderId, confirmationToken);
     }
 }
 
@@ -116,10 +133,14 @@ public sealed record CheckoutResult
 {
     public bool Success { get; private init; }
     public int OrderId { get; private init; }
+    public Guid? ConfirmationToken { get; private init; }
     public string? ErrorMessage { get; private init; }
 
-    public static CheckoutResult Ok(int orderId) => new() { Success = true, OrderId = orderId };
-    public static CheckoutResult Fail(string error) => new() { Success = false, ErrorMessage = error };
+    public static CheckoutResult Ok(int orderId, Guid? confirmationToken = null)
+        => new() { Success = true, OrderId = orderId, ConfirmationToken = confirmationToken };
+
+    public static CheckoutResult Fail(string error)
+        => new() { Success = false, ErrorMessage = error };
 }
 
 public sealed record PaymentCardDetails(string? Number, string? Expiry, string? Cvc);

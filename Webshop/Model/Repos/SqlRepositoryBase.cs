@@ -2,10 +2,6 @@ using Microsoft.Data.SqlClient;
 
 namespace Webshop.Model.Repos;
 
-/// <summary>
-/// Basen for alle ADO.NET repositories.
-/// Choke point for parameteriserede queries (SQL injection-beskyttelse).
-/// </summary>
 public abstract class SqlRepositoryBase
 {
     protected readonly IDbConnectionFactory _factory;

@@ -16,17 +16,21 @@ public class OrderRepository : SqlRepositoryBase, IOrderRepository
         {
             // 1. Ordre-hoved: Total skrives som snapshot i SAMME transaktion som linjerne,
             //    så de to aldrig kan divergere ved delvis fejl.
-            const string orderSql = @"INSERT INTO Orders (UserId, OrderDate, Total, Status)
-                                      VALUES (@userId, @orderDate, @total, @status);
+            //    UserId er nu NULLABLE (gæsteordrer) — GuestEmail kræves i stedet.
+            //    ConfirmationToken bruges til gæstens adgang til ordrebekræftelsen.
+            const string orderSql = @"INSERT INTO Orders (UserId, GuestEmail, OrderDate, Total, Status, ConfirmationToken)
+                                      VALUES (@userId, @guestEmail, @orderDate, @total, @status, @confirmationToken);
                                       SELECT CAST(SCOPE_IDENTITY() AS INT);";
 
             int orderId;
             await using (var cmd = new SqlCommand(orderSql, conn, tx))
             {
-                cmd.Parameters.AddWithValue("@userId", order.UserId);
+                cmd.Parameters.AddWithValue("@userId", (object?)order.UserId ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@guestEmail", (object?)order.GuestEmail ?? DBNull.Value);
                 cmd.Parameters.AddWithValue("@orderDate", order.OrderDate);
                 cmd.Parameters.AddWithValue("@total", order.Total);
                 cmd.Parameters.AddWithValue("@status", (int)order.Status);
+                cmd.Parameters.AddWithValue("@confirmationToken", (object?)order.ConfirmationToken ?? DBNull.Value);
                 orderId = Convert.ToInt32(await cmd.ExecuteScalarAsync(ct));
             }
 
@@ -68,7 +72,7 @@ public class OrderRepository : SqlRepositoryBase, IOrderRepository
 
     public async Task<Order?> GetByIdAsync(int id, CancellationToken ct = default)
     {
-        const string headerSql = @"SELECT Id, UserId, OrderDate, Total, Status
+        const string headerSql = @"SELECT Id, UserId, GuestEmail, OrderDate, Total, Status, ConfirmationToken
                                    FROM Orders WHERE Id = @id";
 
         var headers = await QueryAsync(headerSql, MapHeader,
@@ -81,16 +85,20 @@ public class OrderRepository : SqlRepositoryBase, IOrderRepository
         {
             Id = header.Id,
             UserId = header.UserId,
+            GuestEmail = header.GuestEmail,
             OrderDate = header.OrderDate,
             Total = header.Total,
             Status = header.Status,
+            ConfirmationToken = header.ConfirmationToken,
             Lines = await LoadLinesAsync(id, ct)
         };
     }
 
     public async Task<List<Order>> GetByUserIdAsync(int userId, CancellationToken ct = default)
     {
-        const string sql = @"SELECT Id, UserId, OrderDate, Total, Status
+        // UserID-filteret betyder automatisk, at gæsteordrer (UserId = NULL)
+        // ALDRIG kan ramme en login-brugers ordrehistorik — NULL =/= noget id.
+        const string sql = @"SELECT Id, UserId, GuestEmail, OrderDate, Total, Status, ConfirmationToken
                              FROM Orders
                              WHERE UserId = @userId
                              ORDER BY OrderDate DESC";
@@ -105,13 +113,44 @@ public class OrderRepository : SqlRepositoryBase, IOrderRepository
             {
                 Id = header.Id,
                 UserId = header.UserId,
+                GuestEmail = header.GuestEmail,
                 OrderDate = header.OrderDate,
                 Total = header.Total,
                 Status = header.Status,
+                ConfirmationToken = header.ConfirmationToken,
                 Lines = await LoadLinesAsync(header.Id, ct)
             });
         }
         return orders;
+    }
+
+    /// <summary>
+    /// Gæsteordrer slås KUN op via det u-gættelige confirmationToken — aldrig
+    /// via det sekventielle Id, som ellers kunne udnyttes til IDOR/enumeration.
+    /// </summary>
+    public async Task<Order?> GetByConfirmationTokenAsync(Guid token, CancellationToken ct = default)
+    {
+        const string headerSql = @"SELECT Id, UserId, GuestEmail, OrderDate, Total, Status, ConfirmationToken
+                                   FROM Orders
+                                   WHERE ConfirmationToken = @token AND UserId IS NULL";
+
+        var headers = await QueryAsync(headerSql, MapHeader,
+            p => p.AddWithValue("@token", token), ct);
+
+        if (headers.Count == 0) return null;
+
+        var header = headers[0];
+        return new Order
+        {
+            Id = header.Id,
+            UserId = header.UserId,
+            GuestEmail = header.GuestEmail,
+            OrderDate = header.OrderDate,
+            Total = header.Total,
+            Status = header.Status,
+            ConfirmationToken = header.ConfirmationToken,
+            Lines = await LoadLinesAsync(header.Id, ct)
+        };
     }
 
     private async Task<IReadOnlyList<OrderLine>> LoadLinesAsync(int orderId, CancellationToken ct)
@@ -128,10 +167,19 @@ public class OrderRepository : SqlRepositoryBase, IOrderRepository
     private static Order MapHeader(SqlDataReader r) => new()
     {
         Id = r.GetInt32(r.GetOrdinal("Id")),
-        UserId = r.GetInt32(r.GetOrdinal("UserId")),
-        OrderDate = r.GetDateTime(r.GetOrdinal("OrderDate")),     // datetime2 ✓
+        // Nullable efter gæste-flowet:
+        UserId = r.IsDBNull(r.GetOrdinal("UserId"))
+            ? null
+            : r.GetInt32(r.GetOrdinal("UserId")),
+        GuestEmail = r.IsDBNull(r.GetOrdinal("GuestEmail"))
+            ? null
+            : r.GetString(r.GetOrdinal("GuestEmail")),
+        OrderDate = r.GetDateTime(r.GetOrdinal("OrderDate")),
         Total = r.GetDecimal(r.GetOrdinal("Total")),
-        Status = (OrderStatus)r.GetInt32(r.GetOrdinal("Status"))  // int ✓
+        Status = (OrderStatus)r.GetInt32(r.GetOrdinal("Status")),
+        ConfirmationToken = r.IsDBNull(r.GetOrdinal("ConfirmationToken"))
+            ? null
+            : r.GetGuid(r.GetOrdinal("ConfirmationToken"))
     };
 
     private static OrderLine MapLine(SqlDataReader r) => new()

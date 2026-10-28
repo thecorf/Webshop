@@ -43,6 +43,24 @@ else
                     <div asp-validation-summary="All" class="text-danger"></div>
 
                     <form method="post">
+                        @* GÆSTE-FELT: vises kun når brugeren ikke er logget ind.
+                           Loggede-in brugeres e-mail kendes via kontoen og postes ikke. *@
+                        @if (Model.IsGuest)
+                        {
+                            <div class="mb-3">
+                                <label asp-for="Input.GuestEmail" class="form-label">E-mail til ordrebekræftelse</label>
+                                <input asp-for="Input.GuestEmail" class="form-control" type="email"
+                                       autocomplete="email" placeholder="din@mail.dk" />
+                                <span asp-validation-for="Input.GuestEmail" class="text-danger"></span>
+                                <div class="form-text">
+                                    Bestiller som gæst — du behøver ikke en konto.
+                                    <a asp-page="/Login" class="d-block mt-1">
+                                        Har du en konto? Log ind <small>&#8594;</small>
+                                    </a>
+                                </div>
+                            </div>
+                        }
+
                         <div class="mb-3">
                             <label class="form-label d-block">Betalingsmetode</label>
                             @foreach (var method in Model.PaymentMethods)

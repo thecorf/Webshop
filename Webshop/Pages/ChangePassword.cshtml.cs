@@ -47,10 +47,16 @@ public class ChangePasswordModel : PageModel
         public string ConfirmPassword { get; set; } = "";
     }
 
-    public IActionResult OnGet() => Page();
+    public IActionResult OnGet()
+    {
+        if (IsAdmin()) return NotFound();
+        return Page();
+    }
 
     public async Task<IActionResult> OnPostAsync(CancellationToken ct)
     {
+        if (IsAdmin()) return NotFound();
+
         if (!ModelState.IsValid)
             return Page();
 
@@ -62,7 +68,6 @@ public class ChangePasswordModel : PageModel
         if (user is null)
             return Challenge();
 
-
         if (!Argon2.Verify(user.PasswordHash, Input.CurrentPassword))
         {
             _logger.LogWarning("Fejlet skift af adgangskode (forkert nuværende kode) for bruger {UserId}",
@@ -71,14 +76,12 @@ public class ChangePasswordModel : PageModel
             return Page();
         }
 
-
         var policyErrors = _passwordPolicy.Validate(Input.NewPassword, user.UserName, user.Email);
         foreach (var error in policyErrors)
             ModelState.AddModelError("Input.NewPassword", error);
 
         if (policyErrors.Count > 0)
             return Page();
-
 
         if (Argon2.Verify(user.PasswordHash, Input.NewPassword))
         {
@@ -100,6 +103,16 @@ public class ChangePasswordModel : PageModel
         HttpContext.Session.Clear();
         TempData["StatusMessage"] = "Din adgangskode er ændret. Log ind med din nye adgangskode.";
         return SignOut(new AuthenticationProperties { RedirectUri = "/Login" });
+    }
+
+    private bool IsAdmin()
+    {
+        if (!User.IsInRole("Admin"))
+            return false;
+
+        var userId = GetCurrentUserId();
+        _logger.LogWarning("ADMIN blokeret fra password-skift: {UserId}", userId);
+        return true;
     }
 
     private int? GetCurrentUserId()

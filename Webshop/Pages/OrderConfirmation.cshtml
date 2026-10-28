@@ -53,8 +53,26 @@
                         Status: @Model.Order.Status
                     </p>
 
+                    @* GÆSTE-INFO: gæster får bekræftelsen HER og nu — det er deres eneste kvittering.
+                       Gem linket/billedet af siden, hvis den skal kunne findes igen. *@
+                    @if (Model.IsGuestOrder)
+                    {
+                        <div class="alert alert-info mt-3 small">
+                            Du bestilte som gæst. Bekræftelsen sendes ikke på e-mail —
+                            gem denne side eller notér ordrenummeret ovenfor, hvis du skal bruge det senere.
+                        </div>
+                    }
+
                     <div class="text-center mt-4">
-                        <a asp-page="/OrderHistory" class="btn btn-outline-secondary me-2">Se alle ordrer</a>
+                        @* Ordrehistorik findes kun for kunder — skjules for gæsteordrer. *@
+                        @if (!Model.IsGuestOrder)
+                        {
+                            <a asp-page="/OrderHistory" class="btn btn-outline-secondary me-2">Se alle ordrer</a>
+                        }
+                        else
+                        {
+                            <a asp-page="/Register" class="btn btn-outline-secondary me-2">Opret en konto</a>
+                        }
                         <a asp-page="/Products" class="btn btn-primary">Fortsæt med at handle</a>
                     </div>
                 </div>

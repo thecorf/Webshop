@@ -14,24 +14,27 @@ using Webshop.Model.Services;
 
 namespace Webshop.Pages;
 
-[Authorize]
 public class CheckoutModel : PageModel
 {
     private readonly CheckoutFacade _checkoutFacade;
     private readonly CartService _cartService;
     private readonly IProductRepository _productRepository;
+    private readonly ILogger<CheckoutModel> _logger;
 
     public CheckoutModel(CheckoutFacade checkoutFacade,
                          CartService cartService,
-                         IProductRepository productRepository)
+                         IProductRepository productRepository,
+                         ILogger<CheckoutModel> logger)
     {
         _checkoutFacade = checkoutFacade;
         _cartService = cartService;
         _productRepository = productRepository;
+        _logger = logger;
     }
 
     public List<CheckoutLine> Lines { get; private set; } = new();
     public decimal Total => Lines.Sum(l => l.LineTotal);
+    public bool IsGuest => GetCurrentUserId() is null;
     public IReadOnlyCollection<Model.Services.Payments.IPaymentMethod> PaymentMethods
         => _checkoutFacade.AvailablePaymentMethods;
 
@@ -42,6 +45,12 @@ public class CheckoutModel : PageModel
     {
         [Required(ErrorMessage = "Vælg en betalingsmetode.")]
         public string PaymentMethod { get; set; } = "card";
+
+
+        [EmailAddress(ErrorMessage = "Angiv en gyldig e-mailadresse.")]
+        [StringLength(320, ErrorMessage = "E-mailen er for lang.")]
+        public string? GuestEmail { get; set; }
+
         public string? CardNumber { get; set; }
         public string? CardExpiry { get; set; }
         public string? CardCvc { get; set; }
@@ -49,25 +58,40 @@ public class CheckoutModel : PageModel
 
     public async Task<IActionResult> OnGetAsync(CancellationToken ct)
     {
+        if (IsAdmin())
+            return BlockedForAdmins();
+
         await LoadLinesAsync(ct);
         return Page();
     }
 
     public async Task<IActionResult> OnPostAsync(CancellationToken ct)
     {
+
+        if (IsAdmin())
+            return BlockedForAdmins();
+
         await LoadLinesAsync(ct);
         if (Lines.Count == 0)
             return RedirectToPage("/Cart");
 
+        var userId = GetCurrentUserId();
+        var isGuest = userId is null;
+
+
+        if (isGuest && string.IsNullOrWhiteSpace(Input.GuestEmail))
+        {
+            ModelState.AddModelError("Input.GuestEmail",
+                "Angiv din e-mail, så du kan modtage din ordrebekræftelse.");
+            return Page();
+        }
+
         if (!ModelState.IsValid)
             return Page();
 
-        var userId = GetCurrentUserId();
-        if (userId is null)
-            return Challenge();
-
         var result = await _checkoutFacade.CheckoutAsync(
-            userId.Value,
+            userId,
+            isGuest ? Input.GuestEmail : null,
             Input.PaymentMethod,
             new PaymentCardDetails(Input.CardNumber, Input.CardExpiry, Input.CardCvc),
             ct);
@@ -78,7 +102,24 @@ public class CheckoutModel : PageModel
             return Page();
         }
 
+
+        if (isGuest)
+        {
+            return RedirectToPage("/OrderConfirmation",
+                new { token = result.ConfirmationToken?.ToString("N") });
+        }
+
         return RedirectToPage("/OrderConfirmation", new { id = result.OrderId });
+    }
+
+    private bool IsAdmin() => User.IsInRole("Admin");
+
+    private IActionResult BlockedForAdmins()
+    {
+        _logger.LogWarning("ADMIN blokeret fra checkout: {UserId}", GetCurrentUserId());
+        TempData["ErrorMessage"] =
+            "Som administrator kan du ikke købe produkter i webshoppen.";
+        return RedirectToPage("/Products");
     }
 
     private int? GetCurrentUserId()

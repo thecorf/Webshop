@@ -1,32 +1,71 @@
 ﻿@model Webshop.Pages.Shared.Components.UserProfile.UserModel
 
-<div class="dropdown">
-    @if (Model.IsLoggedIn)
-    {
-        @* LOGGET IND *@
+@if (!Model.IsLoggedIn)
+{
+    @* IKKE LOGGET IND — dropdown med Log ind / Opret konto *@
+    <div class="dropdown">
         <button class="btn border-0 d-flex flex-column align-items-center p-0"
                 type="button"
+                id="userMenuButtonLoggedOut"
                 data-bs-toggle="dropdown"
                 aria-expanded="false"
+                aria-haspopup="true"
                 style="min-width: auto; padding: 4px;">
 
-            <div class="position-relative">
+            <!-- Person-ikon uden checkmark -->
+            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24"
+                 fill="none" stroke="#333" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
+                <circle cx="12" cy="7" r="4" />
+            </svg>
+
+            <span class="small fw-medium mt-1" style="color:#333;">Log ind</span>
+        </button>
+
+        <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0"
+            aria-labelledby="userMenuButtonLoggedOut"
+            style="min-width: 180px;">
+            <li>
+                <a class="dropdown-item" asp-page="/Login">Log ind</a>
+            </li>
+            <li><hr class="dropdown-divider"></li>
+            <li>
+                <a class="dropdown-item" asp-page="/Register">Opret konto</a>
+            </li>
+        </ul>
+    </div>
+}
+else
+{
+    @* LOGGET IND — KRÆVET: .dropdown-wrapper giver position:relative, som menuen forankres i *@
+    <div class="dropdown">
+        <button class="btn border-0 d-flex flex-column align-items-center p-0"
+                type="button"
+                id="userMenuButton"
+                data-bs-toggle="dropdown"
+                aria-expanded="false"
+                aria-haspopup="true"
+                style="min-width: auto; padding: 4px;">
+
+            @* span i stedet for div — buttons må kun indeholde phrasing content *@
+            <span class="position-relative d-inline-block">
                 <!-- Person-ikon -->
                 <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24"
                      fill="none" stroke="#333" stroke-width="1.6" stroke-linecap="round"
                      stroke-linejoin="round">
-                    <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/>
-                    <circle cx="12" cy="7" r="4"/>
+                    <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
+                    <circle cx="12" cy="7" r="4" />
                 </svg>
-                
-                @* Grønt checkmark-badges*@
+
+                @* Grønt checkmark-badge *@
                 <span style="position:absolute;top:-2px;right:-2px;display:block;width:14px;height:14px;background:#28a745;border-radius:50%;border:2px solid #fff;">
                     <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24"
                          fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
                         <polyline points="20 6 9 17 4 12"></polyline>
                     </svg>
                 </span>
-            </div>
+            </span>
+
             @{
                 var firstName = User.FindFirst(System.Security.Claims.ClaimTypes.GivenName)?.Value
                 ?? User.Identity?.Name ?? "du";
@@ -35,29 +74,12 @@
             <span class="small fw-medium mt-1" style="color:#333;">Hej @firstName</span>
         </button>
 
-        @* Dropdown-menu *@
+        @* Dropdown-menu — nu INSIDE .dropdown-wrapperen *@
         <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0"
+            aria-labelledby="userMenuButton"
             style="min-width: 180px;">
             <li class="px-3 py-2 border-bottom">
                 <strong>@Model.UserName</strong>
-                @if (Model.IsAdmin)
-                {
-                <li>
-                    <a class="dropdown-item" asp-page="/AdminProducts">
-                        Rediger produkter
-                    </a>
-                </li>
-                <li><hr class="dropdown-divider"></li>
-            }
-            <li>
-                <a class="dropdown-item" asp-page="/OrderHistory">
-                    Min ordrehistorik
-                </a>
-            </li>
-            <li>
-                <a class="dropdown-item" asp-page="/ChangePassword">
-                    Skift adgangskode
-                </a>
             </li>
 
             @if (Model.IsAdmin)
@@ -69,45 +91,29 @@
                 </li>
                 <li><hr class="dropdown-divider"></li>
             }
-            
+
+            <li>
+                <a class="dropdown-item" asp-page="/OrderHistory">
+                    Min ordrehistorik
+                </a>
+            </li>
+
+            @if (!Model.IsAdmin)
+            {
+                <li>
+                    <a class="dropdown-item" asp-page="/ChangePassword">
+                        Skift adgangskode
+                    </a>
+                </li>
+            }
+
+            <li><hr class="dropdown-divider"></li>
+
             <li>
                 <a class="dropdown-item" asp-page="/Logout">
                     <i class="bi bi-box-arrow-right me-2"></i>Log ud
                 </a>
             </li>
         </ul>
-    }
-    else
-    {
-        @* IKKE LOGGET IND — dropdown med Log ind / Opret konto *@
-        <div class="dropdown">
-            <button class="btn border-0 d-flex flex-column align-items-center p-0"
-                    type="button"
-                    data-bs-toggle="dropdown"
-                    aria-expanded="false"
-                    style="min-width: auto; padding: 4px;">
-
-                <!-- Person-ikon uden checkmark -->
-                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24"
-                     fill="none" stroke="#333" stroke-width="1.6" stroke-linecap="round"
-                     stroke-linejoin="round">
-                    <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
-                    <circle cx="12" cy="7" r="4" />
-                </svg>
-
-                <span class="small fw-medium mt-1" style="color:#333;">Log ind</span>
-            </button>
-
-            <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0"
-                style="min-width: 180px;">
-                <li>
-                    <a class="dropdown-item" asp-page="/Login">Log ind</a>
-                </li>
-                <li><hr class="dropdown-divider"></li>
-                <li>
-                    <a class="dropdown-item" asp-page="/Register">Opret konto</a>
-                </li>
-            </ul>
-        </div>
-    }
-</div>
+    </div>
+}

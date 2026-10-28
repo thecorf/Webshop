@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Webshop.Model;
@@ -23,6 +24,8 @@ public class ProductsModel : PageModel
 
     public List<Product> Products { get; private set; } = new();
     public Dictionary<int, string> Categories { get; private set; } = new();
+
+    public bool IsAdmin => User.IsInRole("Admin");
 
     [BindProperty(SupportsGet = true)]
     public int? CategoryId { get; set; }
@@ -53,6 +56,13 @@ public class ProductsModel : PageModel
 
     public async Task<IActionResult> OnPostAddToCartAsync(int productId, CancellationToken ct)
     {
+        if (IsAdmin)
+        {
+            _logger.LogWarning("ADMIN blokeret fra at lægge produkt {ProductId} i kurven", productId);
+            TempData["CartMessage"] = "Som administrator kan du ikke købe produkter i webshoppen.";
+            return RedirectToPage();
+        }
+
         var product = await _productRepository.GetByIdAsync(productId, ct);
         if (product is null || product.Stock <= 0)
         {
